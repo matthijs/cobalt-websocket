@@ -32,18 +32,15 @@ cobalt::promise<socket_type> connect_tcp(std::string_view host,
 cobalt::promise<ssl_socket_type> connect(std::string_view host,
                                          std::string_view port,
                                          boost::asio::ssl::context &ctx) {
-  fmt::print("connect: resolving\n");
   // Resolve possible endpoints
   boost::asio::ip::tcp::resolver resolve{cobalt::this_thread::get_executor()};
   auto endpoints = co_await resolve.async_resolve(host, port, cobalt::use_op);
 
   // Connect to one of the endpoints
-  fmt::print("connect: connecting\n");
   ssl_socket_type sock{cobalt::this_thread::get_executor(), ctx};
   co_await boost::asio::async_connect(sock.lowest_layer(), endpoints);
 
   // Handshake
-  fmt::print("connect: ssl handshake\n");
   co_await sock.async_handshake(boost::asio::ssl::stream_base::client);
 
   // Return the connected socket
@@ -54,8 +51,6 @@ cobalt::promise<ssl_socket_type> connect(std::string_view host,
 cobalt::promise<websocket_type> connect_ws(boost::urls::url_view uri,
                                            boost::asio::ssl::context &ctx) {
   // Create a websocket stream and connect to the endpoint
-  fmt::print("connect_ws: connecting to {} on port {}\n", uri.host(),
-             uri.port());
   websocket_type ws{co_await connect(uri.host(), uri.port(), ctx)};
 
   // Websocket handshake
@@ -123,5 +118,6 @@ cobalt::main co_main(int argc, char **argv) {
     boost::urls::url uri = boost::urls::parse_uri(endpoint).value();
     co_await cobalt::with(co_await connect_ws(uri, ctx), &session, &disconnect_ws);
   }
+
   co_return 0;
 }

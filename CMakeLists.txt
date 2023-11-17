@@ -7,17 +7,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "Using ${CMAKE_CXX_COMPILER} (compiler id: ${CMAKE_CXX_COMPILER_ID})")
 
-# Include various cmake stuff for c++
-include(cmake/compiler-options.cmake)
-include(cmake/c++-standards.cmake)
-include(cmake/code-coverage.cmake)
-include(cmake/sanitizers.cmake)
-include(cmake/tools.cmake)
-include(cmake/link-time-optimization.cmake)
-
-# Default to std=c++20
-cxx_20()
-
 # Variables
 set(CMAKE_CXX_FLAGS "-g -Wall -stdlib=libc++")
 set(BOOST_ROOT "/home/matthijs/boost/boost_1_84_0")
@@ -34,6 +23,9 @@ include_directories(${Boost_INCLUDE_DIRS})
 # Executable
 add_executable(main
 	main.cpp)
+
+# standard 20
+set_property(TARGET main PROPERTY CXX_STANDARD 20)
 
 # Link
 target_link_libraries(main Threads::Threads fmt::fmt ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})

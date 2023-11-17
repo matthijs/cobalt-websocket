@@ -15,7 +15,6 @@ set(BOOST_ROOT "/home/matthijs/boost/boost_1_84_0")
 find_package(Boost 1.84.0 REQUIRED COMPONENTS cobalt system url)
 find_package(Threads)
 find_package(OpenSSL REQUIRED)
-find_package(fmt REQUIRED)
 
 # Includes
 include_directories(${Boost_INCLUDE_DIRS})
@@ -28,4 +27,4 @@ add_executable(main
 set_property(TARGET main PROPERTY CXX_STANDARD 20)
 
 # Link
-target_link_libraries(main Threads::Threads fmt::fmt ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(main Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})

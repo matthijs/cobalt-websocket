@@ -7,8 +7,6 @@
 #include <boost/cobalt.hpp>
 #include <boost/url.hpp>
 
-#include <fmt/core.h>
-
 namespace cobalt = boost::cobalt;
 
 using executor_type = cobalt::use_op_t::executor_with_default<cobalt::executor>;
@@ -62,50 +60,57 @@ cobalt::promise<websocket_type> connect_ws(boost::urls::url_view uri,
 
 cobalt::promise<void> disconnect_ws(websocket_type ws, std::exception_ptr) {
   // Send close frame
-  fmt::print("disconnect: sending close frame\n");
+  std::printf("disconnect: sending close frame\n");
   try {
     co_await ws.async_close(boost::beast::websocket::close_code::none);
   } catch (const std::exception &e) {
-    fmt::print("disconnect: async_close: exception: {}\n", e.what());
+    std::printf("disconnect: async_close: exception: %s\n", e.what());
   }
 
   // Wait for error
-  fmt::print("disconnect: waiting on error\n");
+  std::printf("disconnect: waiting on error\n");
   try {
     boost::beast::flat_buffer buf;
     co_await ws.async_read(buf);
   } catch (const std::exception &e) {
-    fmt::print("disconnect: async_read: exception: {}\n", e.what());
+    std::printf("disconnect: async_read: exception: %s\n", e.what());
   }
 
   // Now disconnect SSL on this stream
   try {
     co_await ws.next_layer().async_shutdown();
   } catch (const std::exception &e) {
-    fmt::print("disconnect: ssl: exception: {}\n", e.what());
+    std::printf("disconnect: ssl: exception: %s\n", e.what());
   }
 
-  // Close the socket
-  boost::system::error_code ec;
+  // Disable sending / receiving
+  boost::system::error_code ec_shutdown;
   ws.next_layer().next_layer().shutdown(
-      boost::asio::ip::tcp::socket::shutdown_both, ec);
-  ws.next_layer().next_layer().close(ec);
+      boost::asio::ip::tcp::socket::shutdown_both, ec_shutdown);
+  std::printf("disconnect: disable sending / receiving: %s\n",
+              ec_shutdown.message().c_str());
 
+  // Close the socket
+  boost::system::error_code ec_close;
+  ws.next_layer().next_layer().close(ec_close);
+  std::printf("disconnect: close socket: %s\n", ec_close.message().c_str());
+
+  std::printf("disconnect: connection closed succesfully\n");
   co_return;
 }
 
 cobalt::promise<void> session(websocket_type &ws) {
-  fmt::print("session: subscribe\n");
+  std::printf("session: subscribe\n");
   std::string request =
       R"({"event":"subscribe","channel":"ticker","symbol":"tBTCUSD"})";
   co_await ws.async_write(boost::asio::buffer(request));
 
-  fmt::print("session: reading data\n");
+  std::printf("session: reading data\n");
   boost::beast::flat_buffer buf;
   while (!co_await cobalt::this_coro::cancelled && ws.is_open()) {
     auto size = co_await ws.async_read(buf);
     std::string s{static_cast<const char *>(buf.cdata().data()), size};
-    fmt::print("{}\n", s);
+    std::printf("%s\n", s.c_str());
     buf.consume(size);
   }
   co_return;
@@ -116,7 +121,8 @@ cobalt::main co_main(int argc, char **argv) {
     boost::asio::ssl::context ctx{boost::asio::ssl::context::tls_client};
     std::string endpoint = "wss://api-pub.bitfinex.com:443/ws/2";
     boost::urls::url uri = boost::urls::parse_uri(endpoint).value();
-    co_await cobalt::with(co_await connect_ws(uri, ctx), &session, &disconnect_ws);
+    co_await cobalt::with(co_await connect_ws(uri, ctx), &session,
+                          &disconnect_ws);
   }
 
   co_return 0;

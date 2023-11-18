@@ -6,6 +6,7 @@
 #include <boost/beast/websocket/ssl.hpp>
 #include <boost/cobalt.hpp>
 #include <boost/url.hpp>
+#include <exception>
 
 namespace cobalt = boost::cobalt;
 
@@ -58,7 +59,17 @@ cobalt::promise<websocket_type> connect_ws(boost::urls::url_view uri,
   co_return ws;
 }
 
-cobalt::promise<void> disconnect_ws(websocket_type ws, std::exception_ptr) {
+cobalt::promise<void> disconnect_ws(websocket_type ws, std::exception_ptr& ep) {
+
+  // Check if there is an exception
+  if (ep)
+  {
+    std::printf("disconnect: there is an exception...\n");
+  }
+
+  // Reset the exception ptr
+  ep = nullptr;
+
   // Send close frame
   std::printf("disconnect: sending close frame\n");
   try {

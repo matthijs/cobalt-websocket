@@ -18,52 +18,66 @@ using websocket_type = boost::beast::websocket::stream<ssl_socket_type>;
 
 cobalt::promise<socket_type> connect_tcp(std::string_view host,
                                          std::string_view port) {
-  // Resolve possible endpoints
-  boost::asio::ip::tcp::resolver resolve{cobalt::this_thread::get_executor()};
-  auto endpoints = co_await resolve.async_resolve(host, port, cobalt::use_op);
+  try {
+    // Resolve possible endpoints
+    boost::asio::ip::tcp::resolver resolve{cobalt::this_thread::get_executor()};
+    auto endpoints = co_await resolve.async_resolve(host, port, cobalt::use_op);
 
-  // Connect to one of the endpoints
-  socket_type sock{cobalt::this_thread::get_executor()};
-  co_await boost::asio::async_connect(sock, endpoints);
-  co_return sock;
+    // Connect to one of the endpoints
+    socket_type sock{cobalt::this_thread::get_executor()};
+    co_await boost::asio::async_connect(sock, endpoints);
+    co_return sock;
+  } catch (const std::exception &e) {
+    std::printf("connect_tcp: exception: %s\n", e.what());
+    throw;
+  }
 }
 
 cobalt::promise<ssl_socket_type> connect(std::string_view host,
                                          std::string_view port,
                                          boost::asio::ssl::context &ctx) {
-  // Resolve possible endpoints
-  boost::asio::ip::tcp::resolver resolve{cobalt::this_thread::get_executor()};
-  auto endpoints = co_await resolve.async_resolve(host, port, cobalt::use_op);
+  try {
+    // Resolve possible endpoints
+    boost::asio::ip::tcp::resolver resolve{cobalt::this_thread::get_executor()};
+    auto endpoints = co_await resolve.async_resolve(host, port, cobalt::use_op);
 
-  // Connect to one of the endpoints
-  ssl_socket_type sock{cobalt::this_thread::get_executor(), ctx};
-  co_await boost::asio::async_connect(sock.lowest_layer(), endpoints);
+    // Connect to one of the endpoints
+    ssl_socket_type sock{cobalt::this_thread::get_executor(), ctx};
+    co_await boost::asio::async_connect(sock.lowest_layer(), endpoints);
 
-  // Handshake
-  co_await sock.async_handshake(boost::asio::ssl::stream_base::client);
+    // Handshake
+    co_await sock.async_handshake(boost::asio::ssl::stream_base::client);
 
-  // Return the connected socket
-  co_return sock;
+    // Return the connected socket
+    co_return sock;
+  } catch (const std::exception &e) {
+    std::printf("connect: exception: %s\n", e.what());
+    throw;
+  }
 }
 
 // connect/disconnect websocket
 cobalt::promise<websocket_type> connect_ws(boost::urls::url_view uri,
                                            boost::asio::ssl::context &ctx) {
-  // Create a websocket stream and connect to the endpoint
-  websocket_type ws{co_await connect(uri.host(), uri.port(), ctx)};
+  try {
+    // Create a websocket stream and connect to the endpoint
+    websocket_type ws{co_await connect(uri.host(), uri.port(), ctx)};
 
-  // Websocket handshake
-  co_await ws.async_handshake(uri.host(), uri.encoded_target());
+    // Websocket handshake
+    co_await ws.async_handshake(uri.host(), uri.encoded_target());
 
-  // Return the websocket
-  co_return ws;
+    // Return the websocket
+    co_return ws;
+  } catch (const std::exception &e) {
+    std::printf("connect_ws: exception: %s\n", e.what());
+    throw;
+  }
 }
 
-cobalt::promise<void> disconnect_ws(websocket_type ws, std::exception_ptr& ep) {
+cobalt::promise<void> disconnect_ws(websocket_type ws, std::exception_ptr &ep) {
 
   // Check if there is an exception
-  if (ep)
-  {
+  if (ep) {
     std::printf("disconnect: there is an exception...\n");
   }
 
@@ -111,29 +125,38 @@ cobalt::promise<void> disconnect_ws(websocket_type ws, std::exception_ptr& ep) {
 }
 
 cobalt::promise<void> session(websocket_type &ws) {
-  std::printf("session: subscribe\n");
-  std::string request =
-      R"({"event":"subscribe","channel":"ticker","symbol":"tBTCUSD"})";
-  co_await ws.async_write(boost::asio::buffer(request));
+  try {
+    std::printf("session: subscribe\n");
+    std::string request =
+        R"({"event":"subscribe","channel":"ticker","symbol":"tBTCUSD"})";
+    co_await ws.async_write(boost::asio::buffer(request));
 
-  std::printf("session: reading data\n");
-  boost::beast::flat_buffer buf;
-  while (!co_await cobalt::this_coro::cancelled && ws.is_open()) {
-    auto size = co_await ws.async_read(buf);
-    std::string s{static_cast<const char *>(buf.cdata().data()), size};
-    std::printf("%s\n", s.c_str());
-    buf.consume(size);
+    std::printf("session: reading data\n");
+    boost::beast::flat_buffer buf;
+    while (!co_await cobalt::this_coro::cancelled && ws.is_open()) {
+      auto size = co_await ws.async_read(buf);
+      std::string s{static_cast<const char *>(buf.cdata().data()), size};
+      std::printf("%s\n", s.c_str());
+      buf.consume(size);
+    }
+    co_return;
+  } catch (const std::exception &e) {
+    std::printf("session: exception: %s\n", e.what());
+    throw;
   }
-  co_return;
 }
 
 cobalt::main co_main(int argc, char **argv) {
-  while (!co_await cobalt::this_coro::cancelled) {
-    boost::asio::ssl::context ctx{boost::asio::ssl::context::tls_client};
-    std::string endpoint = "wss://api-pub.bitfinex.com:443/ws/2";
-    boost::urls::url uri = boost::urls::parse_uri(endpoint).value();
-    co_await cobalt::with(co_await connect_ws(uri, ctx), &session,
-                          &disconnect_ws);
+  try {
+    while (!co_await cobalt::this_coro::cancelled) {
+      boost::asio::ssl::context ctx{boost::asio::ssl::context::tls_client};
+      std::string endpoint = "wss://api-pub.bitfinex.com:443/ws/2";
+      boost::urls::url uri = boost::urls::parse_uri(endpoint).value();
+      co_await cobalt::with(co_await connect_ws(uri, ctx), &session,
+                            &disconnect_ws);
+    }
+  } catch (const std::exception &e) {
+    std::printf("main: exception: %s\n", e.what());
   }
 
   co_return 0;

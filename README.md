@@ -19,10 +19,10 @@ Possible output:
 ```bash
 session: subscribe
 session: reading data
-{"event":"info","version":2,"serverId":"95d67bb4-ca86-4018-afba-94e5d51c3b84","platform":{"status":1}}
-{"event":"subscribed","channel":"ticker","chanId":92753,"symbol":"tBTCUSD","pair":"BTCUSD"}
-[92753,[36371,11.850881,36372,14.9750371,38,0.00104588,36371,841.88085507,36846,35866]]
-^C[92753,"hb"]
+{"event":"info","version":2,"serverId":"1dc36a80-7e83-4ea8-9a52-a5ccce8fd45c","platform":{"status":1}}
+{"event":"subscribed","channel":"ticker","chanId":71182,"symbol":"tBTCUSD","pair":"BTCUSD"}
+[71182,[36696,11.74322478,36697,11.78525912,660,0.01831349,36699,628.63809433,36850,35971]]
+^C[71182,[36699,8.89659158,36700,12.07675518,660,0.01831349,36699,628.63809433,36850,35971]]
 disconnect: sending close frame
 disconnect: waiting on error
 disconnect: async_read: exception: Operation canceled [system:125 at /home/matthijs/boost/boost_1_84_0/boost/beast/websocket/impl/stream_impl.hpp:355:68 in function 'bool boost::beast::websocket::stream<boost::asio::ssl::stream<boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::cobalt::use_op_t::executor_with_default<boost::asio::any_io_executor>>>>::impl_type::check_stop_now(error_code &) [NextLayer = boost::asio::ssl::stream<boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::cobalt::use_op_t::executor_with_default<boost::asio::any_io_executor>>>, deflateSupported = true]']
